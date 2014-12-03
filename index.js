@@ -1,7 +1,13 @@
 'use strict';
 
 var fs = require('fs');
+var path = require('path');
+var cardinal = require('cardinal')
+  , pygmentize = require('pygmentize-bundled')
+
 var pathRegex = /(:?[.~]{0,1}(?:[/][^/]+?)+:\d+)/
+
+var si = setImmediate == 'function' ? setImmediate : function _setImmediate(fn) { setTimeout(fn, 0) }
 
 exports.extractLocation = 
 
@@ -70,4 +76,34 @@ function extractLines(location, before, after, cb) {
       cb(null, lines.slice(start, end))
     })
   }
+}
+
+function highlight(frame, cb) {
+  var ext = path.extname(frame.file);
+  var highlighted;
+
+  // for JS we prefer cardinal since it's much faster as it doesn'g spawn anything
+  if (ext === '.js') {
+    try {
+      highlighted = cardinal.highlight(frame.src);
+      return si(function cb_() { cb(null, highlighted) });
+    } catch(e) {
+      // if we error out here just fall through to let pygments have a go
+    }
+  }
+  
+  (function tryPygmentize(lang) {
+    pygmentize({ format: 'console256', lang: lang }, frame.src, onpygmentized)
+
+    function onpygmentized(err, buf) {
+      if (err) { 
+        // In case we tried to provide the language it could happen that a lexer
+        // for it wasn't find. Let's try again without that to make it pick the best one.
+        if (lang) return tryPygmentize();
+
+        return cb(err);
+      }
+      cb(null, buf.toString());
+    }
+  })(ext.length && ext.slice(1))
 }
