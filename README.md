@@ -3,13 +3,10 @@
 
 TRAce enhaNCEr. Adds relevant code snippets to a trace.
 
-```js
-// TODO
+```sh
+cat trace.txt | trance -b 2 -a 2
 ```
 
-## Status
-
-Nix, Nada, Nichevo, Nothing --> go away!
 ## Installation
 
     npm install trance

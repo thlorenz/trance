@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+/*vim ft=js*/
+
+var minimist = require('minimist')
+  , trance = require('../')
+
+function indentCode(code, mark, setMark) {
+  return code
+    .split('\n')
+    .map(function (l, idx) {
+      return (setMark && idx === mark ? '->' : '  ') + l;
+    })
+    .join('\n')
+}
+
+var argv = minimist(process.argv.slice(2)
+  , { boolean: [ 'h', 'help' ] 
+    , number: [ 'b', 'before', 'a', 'after' ]
+    }
+);
+
+var before = argv.b || argv.before || 0;
+var after = argv.a || argv.after || 0;
+
+var bufs = [];
+process.stdin.on('data', ondata)
+process.stdin.on('data', onend)
+
+function ondata(d) { bufs.push(d) }
+function onend() {
+  var lines = Buffer.concat(bufs).toString().split('\n');
+
+  trance.lines(lines, before, after, function (err, processed) {
+    if (err) return console.error(err);
+    processed.forEach(function (res) { 
+      console.log(res.line);
+      if (res.code) console.log(indentCode(res.code, before, before + after !== 0))
+    })
+  });
+}

@@ -12,13 +12,15 @@
   },
   "homepage": "https://github.com/thlorenz/trance",
   "dependencies": {
+    "ansicolors": "~0.3.2",
     "cardinal": "~0.4.4",
+    "minimist": "~1.1.0",
     "pygmentize-bundled": "~2.3.0"
   },
   "devDependencies": {
     "tap": "~0.4.3"
   },
-  "keywords": [],
+  "keywords": [ "debug", "trace", "code", "snippets", "stack" ],
   "author": {
     "name": "Thorsten Lorenz",
     "email": "thlorenz@gmx.de",
