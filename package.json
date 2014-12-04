@@ -4,7 +4,11 @@
   "description": "TRAce enhaNCEr. Adds relevant code snippets to a trace.",
   "main": "index.js",
   "scripts": {
-    "test": "tap test/*.js"
+    "test": "tap test/*.js",
+    "docme": "docme README.md -- --configure .jsdocrc"
+  },
+  "bin": {
+    "trance": "bin/trance"
   },
   "repository": {
     "type": "git",

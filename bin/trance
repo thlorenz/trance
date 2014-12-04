@@ -2,7 +2,9 @@
 /*vim ft=js*/
 
 var minimist = require('minimist')
-  , trance = require('../')
+  , fs       = require('fs')
+  , path     = require('path')
+  , trance   = require('../')
 
 function indentCode(code, mark, setMark) {
   return code
@@ -13,11 +15,19 @@ function indentCode(code, mark, setMark) {
     .join('\n')
 }
 
+function usage() {
+  var usageFile = path.join(__dirname, 'usage.txt');
+  fs.createReadStream(usageFile).pipe(process.stdout);
+  return;
+}
+
 var argv = minimist(process.argv.slice(2)
   , { boolean: [ 'h', 'help' ] 
     , number: [ 'b', 'before', 'a', 'after' ]
     }
 );
+
+if (argv.h || argv.help) return usage();
 
 var before = argv.b || argv.before || 0;
 var after = argv.a || argv.after || 0;

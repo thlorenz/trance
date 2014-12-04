@@ -1,0 +1,20 @@
+usage: cat trace.txt | trance <options>
+
+  Enriches trace with relevant code snippets for the files in the trace.
+
+OPTIONS:
+
+  -b, --before    How many lines of code to include before the line shown in the trace
+  -a, --after     How many lines of code to include after the line shown in the trace
+  
+  -h, --help      Print this help message.
+
+EXAMPLES:
+
+  Include code only for the line shown in the trace
+
+    cat trace.txt | trance
+
+  Include code for the line shown in the trace and 2 lines above and 1 line below
+
+    cat trace.txt | trance -b 2 -a 1
