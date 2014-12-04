@@ -6,11 +6,11 @@ var minimist = require('minimist')
   , path     = require('path')
   , trance   = require('../')
 
-function indentCode(code, mark, setMark) {
+function indentCode(code, mark) {
   return code
     .split('\n')
     .map(function (l, idx) {
-      return (setMark && idx === mark ? '->' : '  ') + l;
+      return (idx === mark ? '->' : '  ') + l;
     })
     .join('\n')
 }
@@ -22,15 +22,40 @@ function usage() {
 }
 
 var argv = minimist(process.argv.slice(2)
-  , { boolean: [ 'h', 'help' ] 
+  , { boolean: [ 'h', 'help', 'c', 'code' ] 
     , number: [ 'b', 'before', 'a', 'after' ]
+    , string: [ 'n', 'nodedir' ]
     }
 );
+
+if (process.argv.length < 3) { 
+  console.error('Please provide at least a --nodedir or specify to include code snippets via --code');
+  return usage();
+}
 
 if (argv.h || argv.help) return usage();
 
 var before = argv.b || argv.before || 0;
 var after = argv.a || argv.after || 0;
+var includeCode = argv.c || argv.code;
+var nodedir = argv.n || argv.nodedir;
+if (nodedir) nodedir = path.resolve(nodedir);
+
+function locateFile(f) {
+  // Taking best guess, this could be improved via fs.existsSync to make
+  // a better effort at finding the file.
+  var ext = path.extname(f);
+
+  // C++ files are inside src
+  if (ext == '.cc' || ext == '.h') return path.join(nodedir, 'src', f);
+
+  // C files are most likely libuv src
+  if (ext == '.c') return path.join(nodedir, 'deps', 'uv', 'src', f);
+
+  // JS files are in lib
+  if (ext == '.js') return path.join(nodedir, 'lib', f);
+}
+
 
 var bufs = [];
 process.stdin.on('data', ondata)
@@ -40,11 +65,11 @@ function ondata(d) { bufs.push(d) }
 function onend() {
   var lines = Buffer.concat(bufs).toString().split('\n');
 
-  trance.lines(lines, before, after, function (err, processed) {
+  trance.lines(lines, before, after, nodedir ? locateFile : null, function (err, processed) {
     if (err) return console.error(err);
     processed.forEach(function (res) { 
       console.log(res.line);
-      if (res.code) console.log(indentCode(res.code, before, before + after !== 0))
+      if (includeCode && res.code) console.log(indentCode(res.code, before))
     })
   });
 }

@@ -4,14 +4,15 @@ var test = require('tap').test
 var fs = require('fs')
 var trance = require('../')
 
-test('\nextracting from lldb trace', function (t) {
+test('\nextracting path locations from lldb trace', function (t) {
   
   var src = fs.readFileSync(__dirname + '/fixtures/lldb-trace.txt', 'utf8')
 
   var locations = src
     .split('\n')
     .map(trance.extractLocation)
-    .filter(function (x) { return x })
+    .filter(function (x) { return x.isPath })
+    .map(function (x) { return x.loc })
 
   t.deepEqual(
       locations
@@ -60,8 +61,19 @@ test('\nspecial cases', function (t) {
   var relative = '#0  0x00000001000049a6 in node::FSEventWrap::Start(v8::FunctionCallbackInfo<v8::Value> const&) at ' + 
     './js/node/src/fs_event_wrap.cc:115'
 
-  t.equal(trance.extractLocation(home), '~/dev/js/node/src/fs_event_wrap.cc:115', 'extracts complete ~/x/x path')
-  t.equal(trance.extractLocation(relative), './js/node/src/fs_event_wrap.cc:115', 'extracts complete relative path')
+  t.equal(trance.extractLocation(home).loc, '~/dev/js/node/src/fs_event_wrap.cc:115', 'extracts complete ~/x/x path')
+  t.equal(trance.extractLocation(relative).loc, './js/node/src/fs_event_wrap.cc:115', 'extracts complete relative path')
   t.end()
 
+})
+
+function inspect(obj, depth) {
+  console.error(require('util').inspect(obj, false, depth || 5, true));
+}
+test('\nfile locations', function (t) {
+  var res = trance.extractLocation('#0  0x00000001000049a6 in somewhere somefile.cpp:20');
+  t.ok(!res.isPath, 'identifies as not path')
+  t.equal(res.loc, 'somefile.cpp:20', 'extract file location')
+  
+  t.end()
 })

@@ -4,8 +4,11 @@ usage: cat trace.txt | trance <options>
 
 OPTIONS:
 
+  -c, --code      If this flag is supplied code snippets are included in the trace
   -b, --before    How many lines of code to include before the line shown in the trace
   -a, --after     How many lines of code to include after the line shown in the trace
+
+  -n, --nodedir   Provides directory to the Node.js project in case traces are from a Node.js app to resolve paths
   
   -h, --help      Print this help message.
 
@@ -13,8 +16,16 @@ EXAMPLES:
 
   Include code only for the line shown in the trace
 
-    cat trace.txt | trance
+    cat trace.txt | trance -c
 
-  Include code for the line shown in the trace and 2 lines above and 1 line below
+  Include code for the line shown in the trace and 2 lines before and 1 line after
 
-    cat trace.txt | trance -b 2 -a 1
+    cat trace.txt | trance -c -b 2 -a 1
+
+  Resolve Node.js paths for the given node path ~/dev/node, but include no code
+
+    cat trace.txt | trance --nodedir ~/dev/node 
+
+  Resolve Node.js paths for the given node path ~/dev/node, and include code 1 line before and 1 line after
+
+    cat trace.txt | trance --nodedir ~/dev/node -b 1 - a 1

@@ -7,8 +7,13 @@ var cardinal = require('cardinal')
   , colors = require('ansicolors')
 
 var pathRegex = /(:?[.~]{0,1}(?:[/][^/]+?)+:\d+)/
+var fileRegex = /(:?[^ ]+?\S+?\.[^:]{0,4}:\d+)/
 
 var si = setImmediate == 'function' ? setImmediate : function _setImmediate(fn) { setTimeout(fn, 0) }
+
+function inspect(obj, depth) {
+  console.error(require('util').inspect(obj, false, depth || 5, true));
+}
 
 var extractLocation = exports.extractLocation = 
 
@@ -19,11 +24,18 @@ var extractLocation = exports.extractLocation =
  * @private
  * @function
  * @param {string} line the line that may contain a location
- * @return {string} the location or null if it wasn't found
+ * @return {Object} `{ loc: the location or null if it wasn't found, isPath: true if it's path, false if it's a file }`
  */
 function extractLocation(line) {
   var match = line.match(pathRegex);
-  return match && match[0];
+  if (match && match[0]) return { loc: match[0], isPath: true }
+  
+  match = line.match(fileRegex);
+  var loc = match && match[0];
+  // remove ansi color codes -- a little hacky, but if we use a trace prettifier
+  // before that those will be there
+  loc = loc && loc.replace(/\u001b/g, '').replace(/\[90m/g, '')
+  return { loc: loc, isPath: false }
 }
 
 var splitLocation = exports.splitLocation =
@@ -125,27 +137,43 @@ var trance_line = exports.line =
  * @param {string} line which hopefully contains a file location
  * @param {number} before how many lines of code to include before the matching lineno
  * @param {number} after how many lines of code to include after the matching lineno
+ * @param {function} locateFile invoked with files that have no path in order to locate them, if `null`, the *identity* function is used
  * @param {function} cb called back with an error or resolved and highlighted code or nothing
  */
-function trance_line(line, before, after, cb) {
-  var loc = extractLocation(line);
+function trance_line(line, before, after, locateFile, cb) {
+  locateFile = locateFile || function identityFn(id) { return id }
+
+  var locInfo = extractLocation(line);
+  var loc = locInfo.loc;
   if (!loc) return si(cb);
 
-  loc= splitLocation(loc);
+  loc = splitLocation(loc);
   if (!loc.lineno) return si(cb);
+
+  var file = loc.file;
+  if (file && !locInfo.isPath) {
+    loc.file = locateFile(loc.file);
+    line = line.replace(file, loc.file);
+  }
 
   var codeLines = extractLines(loc, before, after, oncodeLines);
 
   function oncodeLines(err, codeLines) {
     if (err) return cb(err);
+    if (!codeLines) return cb();
     // prevent highlighters from removing empty lines and thus messing with
     // before and after and such
     codeLines = codeLines.map(function (l) { return l.length ? l : ' ' })
     var frame = {
         file: loc.file
+      , line: line
       , src: codeLines.join('\n')
     }
-    highlight(frame, cb)
+    highlight(frame, function onhighlight(err, code) {
+      if (err) return cb(err);
+      frame.code = code;
+      cb(null, frame);  
+    })
   }
 }
 
@@ -159,9 +187,10 @@ var trance_lines = exports.lines =
  * @param {Array.<string>} lines which hopefully contain a file location
  * @param {number} before how many lines of code to include before the matching lineno
  * @param {number} after how many lines of code to include after the matching lineno
+ * @param {function} locateFile invoked with files that have no path in order to locate them, if `null`, the *identity* function is used
  * @param {function} cb called back with `Array.<Object>` each containing `{ line, code }`
  */
-function trance_lines(lines, before, after, cb) {
+function trance_lines(lines, before, after, locateFile, cb) {
   var tasks = lines.length;
   var processed = new Array(tasks);
   var abort;
@@ -169,13 +198,13 @@ function trance_lines(lines, before, after, cb) {
   lines.forEach(function processLine(l, idx) {
     if (abort) return;
 
-    function oncode(err, code) {
+    function oncode(err, res) {
       if (abort) return;
       if (err) { abort = true; return cb(err); }
        
-      processed[idx] = { line: l, code: code };
+      processed[idx] = res? { line: res.line, code: res.code } : { line: l, code: null };
       if (!--tasks) return cb(null, processed);
     }
-    trance_line(l, before, after, oncode);
+    trance_line(l, before, after, locateFile, oncode);
   })
 }
